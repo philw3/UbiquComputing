@@ -2,8 +2,8 @@
 
 <h2>1. Setting up Phone</h2>
 
-How to enable developer settings on an android phone can be found here: 
-https://developer.android.com/studio/debug/dev-options#:~:text=Enable%20developer%20options%20and%20USB%20debugging,-Figure%201.&text=To%20enable%20developer%20options%2C%20tap,Settings%20%3E%20About%20Phone%20%3E%20Build%20Number  
+How to enable developer settings on an android phone can be found here: [developer.android.com](https://developer.android.com/studio/debug/dev-options#:~:text=Enable%20developer%20options%20and%20USB%20debugging,-Figure%201.&text=To%20enable%20developer%20options%2C%20tap,Settings%20%3E%20About%20Phone%20%3E%20Build%20Number)
+  
 
 These settings are important to delvelop applications with AndroidStudio and an Android phone.   
 
