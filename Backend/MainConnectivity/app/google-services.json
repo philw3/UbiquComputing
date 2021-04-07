@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "594093152966",
+    "project_id": "ubiqitous-b0fb4",
+    "storage_bucket": "ubiqitous-b0fb4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:594093152966:android:3732ca94f84f6900f755c7",
+        "android_client_info": {
+          "package_name": "com.example.mainconnectivity"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "594093152966-ir7mtt451ia2detneapfg61mo47cd5nr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVzO-toQEslnvjGiMvoE5pOJQ4MEb0Isw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "594093152966-ir7mtt451ia2detneapfg61mo47cd5nr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
