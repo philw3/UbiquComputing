@@ -1,11 +1,10 @@
 package com.example.mainconnectivity;
 
+import android.content.*;
+import android.os.*;
 import androidx.appcompat.app.AppCompatActivity;
 
 
-import android.content.Intent;
-import android.os.Bundle;
-import android.os.Handler;
 import android.widget.Toast;
 
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -14,10 +13,8 @@ import com.google.firebase.database.FirebaseDatabase;
 
 //FusedLocation
 import android.Manifest;
-import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.os.Build;
 import android.os.Bundle;
 //import android.support.annotation.NonNull;
 import androidx.annotation.NonNull;
@@ -42,7 +39,7 @@ import com.google.android.gms.location.LocationServices;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, LocationListener {
+        GoogleApiClient.OnConnectionFailedListener, LocationListener, ServiceCallbacks {
 
     FirebaseDatabase database = FirebaseDatabase.getInstance();
     DatabaseReference ref = database.getReference("Tracking_Alexander/");
@@ -51,8 +48,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     DatabaseReference ref4 = database.getReference("Tracking_Markus/");
     Data trackingObject;
     Handler handler = new Handler();
+    Handler handler2 = new Handler();
     Runnable runnable;
     int delay = 10000;
+    String user = "phil";
 
     //FusedLocation
     private Location location;
@@ -68,20 +67,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     // integer for permissions results request
     private static final int ALL_PERMISSIONS_RESULT = 1011;
 
+    private Service myService;
+    private boolean bound = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //ref.setValue("Hey Storage");
-        //ref.child("Location").setValue("12.23131");
-        //ref.child("Location2").setValue("12.231");
-        //ref2.child("sunny").setValue("23degree");
-
         locationTv = findViewById(R.id.location);
+
         // add permissions we need to request location of the users
         permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
         permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-
         permissionsToRequest = permissionsToRequest(permissions);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -97,30 +94,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 addConnectionCallbacks(this).
                 addOnConnectionFailedListener(this).build();
 
-
         // start and trigger a service
-        Intent serviceIntent = new Intent(context, Service.class);
+        Intent serviceIntent = new Intent(this, Service.class);
+        startService(serviceIntent); // need?
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
 
     }
 
     @Override
     protected void onResume() {
-        handler.postDelayed(runnable = new Runnable() {
-            public void run() {
-                handler.postDelayed(runnable, delay);
-                Toast.makeText(MainActivity.this, "This method is run every 10 seconds",
-                        Toast.LENGTH_SHORT).show();
-                       ref.child("Location").setValue("14");
-                       ref.child("Location2").setValue("15");
-                ref2.child("Location").setValue(location.getLatitude());
-                ref2.child("Location2").setValue(location.getLongitude());
-                ref3.child("Location").setValue("14");
-                ref3.child("Location2").setValue("15");
-                ref4.child("Location").setValue("14");
-                ref4.child("Location2").setValue("15");
-
-            }
-        }, delay);
         super.onResume();
 
         if (!checkPlayServices()) {
@@ -128,6 +110,32 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
     }
 
+    // INTERFACE
+    /** Callbacks for service binding, passed to bindService() */
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            // cast the IBinder and get MyService instance
+            Service.LocalBinder binder = (Service.LocalBinder) service;
+            myService = binder.getService();
+            bound = true;
+            myService.setCallbacks(MainActivity.this); // register
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            bound = false;
+        }
+    };
+
+    @Override
+    public void GetLocationInBackground() {
+        onLocationChanged(location);
+    }
+
+
+    // FUSED LOCATION
     private ArrayList<String> permissionsToRequest(ArrayList<String> wantedPermissions) {
         ArrayList<String> result = new ArrayList<>();
 
@@ -152,16 +160,47 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (googleApiClient != null) {
             googleApiClient.connect();
         }
+
+        handler.postDelayed(runnable = new Runnable() {
+            public void run() {
+                handler.postDelayed(runnable, delay);
+                //Toast.makeText(MainActivity.this, "This method is run every 10 seconds", Toast.LENGTH_SHORT).show();
+                ref.child("Location").setValue("14");
+                ref.child("Location2").setValue("15");
+                double loc1 = location.getLatitude();
+                ref2.child("Location").setValue(loc1);
+                double loc2 = location.getLongitude();
+                ref2.child("Location2").setValue(loc2);
+                //Toast.makeText(MainActivity.this, "Lat: " + loc1 + " Long: " + loc2, Toast.LENGTH_SHORT).show();
+                ref3.child("Location").setValue("14");
+                ref3.child("Location2").setValue("15");
+                ref4.child("Location").setValue("14");
+                ref4.child("Location2").setValue("15");
+                //Toast.makeText(MainActivity.this, "END", Toast.LENGTH_SHORT).show();
+            }
+        }, delay);
+
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Unbind from service
+       /* if (bound) {
+            myService.setCallbacks(null); // unregister
+            unbindService(serviceConnection);
+            bound = false;
+        }*/
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // stop location updates
-        if (googleApiClient != null  &&  googleApiClient.isConnected()) {
+        // falls wir keinen background-Service wollen
+        /*if (googleApiClient != null  &&  googleApiClient.isConnected()) {
             LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
             googleApiClient.disconnect();
-        }
+        }*/
     }
 
     private boolean checkPlayServices() {
@@ -224,9 +263,35 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     @Override
     public void onLocationChanged(Location location) {
+        double lat = location.getLatitude();
+        double lon = location.getLongitude();
+
         if (location != null) {
-            locationTv.setText("Latitude : " + location.getLatitude() + "\nLongitude : " + location.getLongitude());
+            locationTv.setText("Latitude : " + lat + "\nLongitude : " + lon);
         }
+
+        switch (user) {
+            case "alex":
+                ref.child("Location").setValue(lat);
+                ref.child("Location2").setValue(lon);
+                break;
+            case "phil":
+                ref2.child("Location").setValue(lat);
+                ref2.child("Location2").setValue(lon);
+                break;
+            case "martin":
+                ref3.child("Location").setValue(lat);
+                ref3.child("Location2").setValue(lon);
+                break;
+            case "markus":
+                ref4.child("Location").setValue(lat);
+                ref4.child("Location2").setValue(lon);
+                break;
+            default:
+                break;
+        }
+
+        Toast.makeText(MainActivity.this, "Lat: " + lat + " Long: " + lon, Toast.LENGTH_LONG).show();
     }
 
     @Override
