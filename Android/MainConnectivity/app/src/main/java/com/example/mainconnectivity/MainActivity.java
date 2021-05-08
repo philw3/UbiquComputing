@@ -1,15 +1,15 @@
 package com.example.mainconnectivity;
 
+import android.app.usage.NetworkStats;
 import android.content.*;
 import android.os.*;
+import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 
 
 import android.widget.Toast;
 
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 //FusedLocation
 import android.Manifest;
@@ -36,39 +36,51 @@ import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+//Firestore
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.GeoPoint;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, LocationListener, ServiceCallbacks {
 
-    FirebaseDatabase database = FirebaseDatabase.getInstance();
-    DatabaseReference ref = database.getReference("Tracking_Alexander/");
-    DatabaseReference ref2 = database.getReference("Tracking_Philipp/");
-    DatabaseReference ref3 = database.getReference("Tracking_Martin/");
-    DatabaseReference ref4 = database.getReference("Tracking_Markus/");
-    Data trackingObject;
-    Handler handler = new Handler();
-    Handler handler2 = new Handler();
-    Runnable runnable;
-    int delay = 10000;
-    String user = "phil";
 
-    //FusedLocation
+    //Firestore
+    //String user = "/Alex";
+    //String user = "/Markus";
+    //String user = "/Martin";
+    String user = "/Philipp";
+    FirebaseFirestore db;
+
+    // FusedLocation
     private Location location;
     private TextView locationTv;
     private GoogleApiClient googleApiClient;
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private LocationRequest locationRequest;
     private static final long UPDATE_INTERVAL = 5000, FASTEST_INTERVAL = 2000;
-    // lists for permissions
+
+    // Permissions
     private ArrayList<String> permissionsToRequest;
     private ArrayList<String> permissionsRejected = new ArrayList<>();
     private ArrayList<String> permissions = new ArrayList<>();
-    // integer for permissions results request
     private static final int ALL_PERMISSIONS_RESULT = 1011;
 
     private Service myService;
     private boolean bound = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,6 +110,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         Intent serviceIntent = new Intent(this, Service.class);
         startService(serviceIntent); // need?
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
+
+        // Fire Store
+        db = FirebaseFirestore.getInstance();
+
 
     }
 
@@ -161,46 +178,19 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             googleApiClient.connect();
         }
 
-        handler.postDelayed(runnable = new Runnable() {
-            public void run() {
-                handler.postDelayed(runnable, delay);
-                //Toast.makeText(MainActivity.this, "This method is run every 10 seconds", Toast.LENGTH_SHORT).show();
-                ref.child("Location").setValue("14");
-                ref.child("Location2").setValue("15");
-                double loc1 = location.getLatitude();
-                ref2.child("Location").setValue(loc1);
-                double loc2 = location.getLongitude();
-                ref2.child("Location2").setValue(loc2);
-                //Toast.makeText(MainActivity.this, "Lat: " + loc1 + " Long: " + loc2, Toast.LENGTH_SHORT).show();
-                ref3.child("Location").setValue("14");
-                ref3.child("Location2").setValue("15");
-                ref4.child("Location").setValue("14");
-                ref4.child("Location2").setValue("15");
-                //Toast.makeText(MainActivity.this, "END", Toast.LENGTH_SHORT).show();
-            }
-        }, delay);
-
+        //setLocation(1, 1, 1);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        // Unbind from service
-       /* if (bound) {
-            myService.setCallbacks(null); // unregister
-            unbindService(serviceConnection);
-            bound = false;
-        }*/
+
+       setLocation(0, 0, 0);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // falls wir keinen background-Service wollen
-        /*if (googleApiClient != null  &&  googleApiClient.isConnected()) {
-            LocationServices.FusedLocationApi.removeLocationUpdates(googleApiClient, this);
-            googleApiClient.disconnect();
-        }*/
     }
 
     private boolean checkPlayServices() {
@@ -231,7 +221,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         location = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
 
         if (location != null) {
-            locationTv.setText("Latitude : " + location.getLatitude() + "\nLongitude : " + location.getLongitude());
+            locationTv.setText("Latitude : " + location.getLatitude() + "\nLongitude : " + location.getLongitude() + "\nAltitude : " + location.getAltitude());
         }
 
         startLocationUpdates();
@@ -265,33 +255,53 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onLocationChanged(Location location) {
         double lat = location.getLatitude();
         double lon = location.getLongitude();
+        double alt = location.getAltitude();
 
         if (location != null) {
-            locationTv.setText("Latitude : " + lat + "\nLongitude : " + lon);
+            locationTv.setText("Latitude : " + location.getLatitude() + "\nLongitude : " + location.getLongitude() + "\nAltitude : " + location.getAltitude());
         }
 
-        switch (user) {
-            case "alex":
-                ref.child("Location").setValue(lat);
-                ref.child("Location2").setValue(lon);
-                break;
-            case "phil":
-                ref2.child("Location").setValue(lat);
-                ref2.child("Location2").setValue(lon);
-                break;
-            case "martin":
-                ref3.child("Location").setValue(lat);
-                ref3.child("Location2").setValue(lon);
-                break;
-            case "markus":
-                ref4.child("Location").setValue(lat);
-                ref4.child("Location2").setValue(lon);
-                break;
-            default:
-                break;
-        }
+        //setLocation(lat, lon, alt);
 
-        Toast.makeText(MainActivity.this, "Lat: " + lat + " Long: " + lon, Toast.LENGTH_LONG).show();
+        new CountDownTimer(30000, 1000) {
+
+            public void onTick(long millisUntilFinished) {
+                double timeLieft = millisUntilFinished / 1000;
+            }
+
+            public void onFinish() {
+                setLocation(lat, lon, alt);
+            }
+        }.start();
+
+
+    }
+
+    public void setLocation(double latitude, double longitude, double altitude) {
+        GeoPoint geoPoint = new GeoPoint(latitude, longitude);
+
+        Map<String, Object> loc = new HashMap<>();
+        loc.put("Altitude", altitude);
+        loc.put("Position", geoPoint);
+        loc.put("Time", location.getTime());
+
+        // Add a new document with a generated ID
+        db.collection(user)
+                .add(loc)
+                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                    @Override
+                    public void onSuccess(DocumentReference documentReference) {
+                        //Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.getId());
+                        //Toast.makeText(MainActivity.this, "DocumentSnapshot added with ID: " + documentReference.getId(), Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        //Log.w(TAG, "Error adding document", e);
+                        Toast.makeText(MainActivity.this, "Error adding document: " + e, Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     @Override
