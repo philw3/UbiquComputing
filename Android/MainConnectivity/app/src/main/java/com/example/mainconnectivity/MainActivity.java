@@ -4,6 +4,7 @@ import android.app.usage.NetworkStats;
 import android.content.*;
 import android.os.*;
 import android.util.Log;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 
@@ -40,9 +41,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 //Firestore
 import com.google.android.gms.tasks.OnFailureListener;
@@ -52,6 +53,7 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.GeoPoint;
+import com.google.type.DateTime;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, LocationListener, ServiceCallbacks {
@@ -81,6 +83,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private Service myService;
     private boolean bound = false;
 
+    int counter = 0;
+    //DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+    //LocalDateTime now = LocalDateTime.now();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -171,6 +176,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         return true;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onStart() {
         super.onStart();
@@ -178,14 +184,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             googleApiClient.connect();
         }
 
-        //setLocation(1, 1, 1);
+        //setLocation(1, 1, 1, true, false);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onStop() {
         super.onStop();
 
-       setLocation(0, 0, 0);
+       setLocation(0, 0, 0, false, true);
     }
 
     @Override
@@ -269,39 +276,55 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 double timeLieft = millisUntilFinished / 1000;
             }
 
+            @RequiresApi(api = Build.VERSION_CODES.O)
             public void onFinish() {
-                setLocation(lat, lon, alt);
+                setLocation(lat, lon, alt, false, false);
             }
         }.start();
 
 
     }
 
-    public void setLocation(double latitude, double longitude, double altitude) {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void setLocation(double latitude, double longitude, double altitude, boolean start, boolean stop) {
         GeoPoint geoPoint = new GeoPoint(latitude, longitude);
 
         Map<String, Object> loc = new HashMap<>();
         loc.put("Altitude", altitude);
         loc.put("Position", geoPoint);
         loc.put("Time", location.getTime());
+        Date currentTime = Calendar.getInstance().getTime();
+        String docName;
+        if ((start && !stop) || counter == 0) {
+            docName = "Location_START:" + " " + currentTime;
+            counter++;
+        }
+        else if (stop && !start){
+            docName = "Location_STOP:" + " " + currentTime;
+        }
+        else {
+            docName = "Location_" + counter + " " + currentTime;
+            counter++;
+        }
 
         // Add a new document with a generated ID
-        db.collection(user)
-                .add(loc)
-                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+        db.collection(user).document(docName)
+                .set(loc)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
-                    public void onSuccess(DocumentReference documentReference) {
-                        //Log.d(TAG, "DocumentSnapshot added with ID: " + documentReference.getId());
-                        //Toast.makeText(MainActivity.this, "DocumentSnapshot added with ID: " + documentReference.getId(), Toast.LENGTH_SHORT).show();
+                    public void onSuccess(Void aVoid) {
+                        //Log.d(TAG, "DocumentSnapshot successfully written!");
+                        //Toast.makeText(MainActivity.this, "DocumentSnapshot added with ID: " + docName, Toast.LENGTH_SHORT).show();
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        //Log.w(TAG, "Error adding document", e);
+                        //Log.w(TAG, "Error writing document", e);
                         Toast.makeText(MainActivity.this, "Error adding document: " + e, Toast.LENGTH_LONG).show();
                     }
                 });
+
     }
 
     @Override
