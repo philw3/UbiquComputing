@@ -4,6 +4,7 @@ import android.app.usage.NetworkStats;
 import android.content.*;
 import android.os.*;
 import android.util.Log;
+import android.view.View;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -84,8 +85,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private boolean bound = false;
 
     int counter = 0;
-    //DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-    //LocalDateTime now = LocalDateTime.now();
+    Date lastTimestamp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -187,17 +187,34 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         //setLocation(1, 1, 1, true, false);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    //@RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onStop() {
         super.onStop();
 
-       setLocation(0, 0, 0, false, true);
+       //setLocation(0, 0, 0, false, true);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        setLocation(0, 0, 0, false, true);
+
+        //finishAffinity();
+        MainActivity.this.finish();
+        System.exit(0);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void Quit_Click(View view){
+        onDestroy();
     }
 
     private boolean checkPlayServices() {
@@ -270,7 +287,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         //setLocation(lat, lon, alt);
 
-        new CountDownTimer(30000, 1000) {
+        /*new CountDownTimer(30000, 1000) {
 
             public void onTick(long millisUntilFinished) {
                 double timeLieft = millisUntilFinished / 1000;
@@ -280,7 +297,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             public void onFinish() {
                 setLocation(lat, lon, alt, false, false);
             }
-        }.start();
+        }.start();*/
+
+        new Timer().schedule(new TimerTask() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void run() {
+                setLocation(lat, lon, alt, false, false);
+            }
+        }, 20_000);
 
 
     }
@@ -289,11 +314,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void setLocation(double latitude, double longitude, double altitude, boolean start, boolean stop) {
         GeoPoint geoPoint = new GeoPoint(latitude, longitude);
 
+        Date currentTime = Calendar.getInstance().getTime();
+
         Map<String, Object> loc = new HashMap<>();
         loc.put("Altitude", altitude);
         loc.put("Position", geoPoint);
-        loc.put("Time", location.getTime());
-        Date currentTime = Calendar.getInstance().getTime();
+        loc.put("Time", currentTime);
         String docName;
         if ((start && !stop) || counter == 0) {
             docName = "Location_START:" + " " + currentTime;
@@ -307,7 +333,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             counter++;
         }
 
-        // Add a new document with a generated ID
         db.collection(user).document(docName)
                 .set(loc)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
@@ -324,6 +349,53 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                         Toast.makeText(MainActivity.this, "Error adding document: " + e, Toast.LENGTH_LONG).show();
                     }
                 });
+
+       /*if ((lastTimestamp.getTime() <= (currentTime.getTime() - 30)) || lastTimestamp == null){
+            // Add a new document with a generated ID
+            db.collection(user).document(docName)
+                    .set(loc)
+                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            //Log.d(TAG, "DocumentSnapshot successfully written!");
+                            //Toast.makeText(MainActivity.this, "DocumentSnapshot added with ID: " + docName, Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            //Log.w(TAG, "Error writing document", e);
+                            Toast.makeText(MainActivity.this, "Error adding document: " + e, Toast.LENGTH_LONG).show();
+                        }
+                    });
+        }
+        else {
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    // wait
+                }
+            }, 30_000);
+
+            // Add a new document with a generated ID
+            db.collection(user).document(docName)
+                    .set(loc)
+                    .addOnSuccessListener(new OnSuccessListener<Void>() {
+                        @Override
+                        public void onSuccess(Void aVoid) {
+                            //Log.d(TAG, "DocumentSnapshot successfully written!");
+                            //Toast.makeText(MainActivity.this, "DocumentSnapshot added with ID: " + docName, Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            //Log.w(TAG, "Error writing document", e);
+                            Toast.makeText(MainActivity.this, "Error adding document: " + e, Toast.LENGTH_LONG).show();
+                        }
+                    });
+
+        }*/
 
     }
 
@@ -362,5 +434,4 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 break;
         }
     }
-
 }
